@@ -208,36 +208,26 @@
   lucide.createIcons();
 
   const chatWindow = document.getElementById('chat-window');
-  const apiUrlInput = 'https://pshscbzrc-school-handbook-chat.loca.lt/'
+  // 1. Changed this to a normal string variable (removed "Input" from the name)
+  const apiUrl = 'https://pshscbzrc-school-handbook-chat.loca.lt/';
   const userInput = document.getElementById('user-input');
   const sendBtn = document.getElementById('send-btn');
   const typingIndicator = document.getElementById('typing-indicator');
-  const verifyLink = document.getElementById('verify-link');
 
-  // Auto-load saved URL from browser memory
-  apiUrlInput.value = localStorage.getItem('last-rag-url') || '';
-  updateVerifyLink();
-
-  apiUrlInput.addEventListener('input', () => {
-    localStorage.setItem('last-rag-url', apiUrlInput.value);
-    updateVerifyLink();
-  });
-
-  function updateVerifyLink() {
-    verifyLink.href = apiUrlInput.value || '#';
-  }
+  // Removed verifyLink and localStorage logic since the URL is hardcoded
 
   async function sendMessage() {
-    const baseUrl = apiUrlInput.value.trim().replace(/\/$/, "");
+    // 2. We now use apiUrl directly, no .value needed
+    const baseUrl = apiUrl.trim().replace(/\/$/, "");
     const question = userInput.value.trim();
 
-    if (!baseUrl) return;
+    if (!question) return; // Prevent sending empty blank messages
+
     appendMessage('user', question);
     userInput.value = '';
     setLoading(true);
 
     try {
-      // GET Request with NO custom headers
       const response = await fetch(`${baseUrl}/ask?question=${encodeURIComponent(question)}`, {
         method: 'GET'
       });
@@ -273,11 +263,19 @@
     sendBtn.disabled = isLoading;
     userInput.disabled = isLoading;
     typingIndicator.style.display = isLoading ? 'block' : 'none';
+
+    // Auto-focus the input box after AI finishes replying
+    if (!isLoading) {
+      userInput.focus();
+    }
   }
 
   // Handle Enter Key
   userInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") sendMessage();
+    if (e.key === "Enter") {
+      e.preventDefault(); // Prevents default form submission behavior
+      sendMessage();
+    }
   });
 </script>
 
