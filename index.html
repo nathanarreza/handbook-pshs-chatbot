@@ -235,7 +235,7 @@
       const data = await response.json();
       appendMessage('ai', data.answer);
     } catch (error) {
-      appendMessage('ai', "**Connection Error.** \n\nCheck Colab for 'SERVER ERROR'.");
+      appendMessage('ai', "Server error! Please try again later.");
     } finally {
       setLoading(false);
     }
