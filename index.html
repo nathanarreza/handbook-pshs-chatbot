@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>School Handbook AI Assistant</title>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --bg-gray: #f9fafb;
+      --white: #ffffff;
+      --text-dark: #111827;
+      --text-light: #6b7280;
+      --ai-bubble: #ffffff;
+      --user-bubble: #e0e7ff;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #f3f4f6;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    header {
+      background: var(--white);
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #e5e7eb;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .header-content {
+      max-width: 800px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .logo-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-dark);
+    }
+
+
+    /* --- Chat Window --- */
+    #chat-window {
+      flex: 1;
+      overflow-y: auto;
+      padding: 2rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      max-width: 800px;
+      width: 100%;
+      margin: 0 auto;
+      box-sizing: border-box;
+    }
+
+    .message {
+      display: flex;
+      gap: 12px;
+      max-width: 85%;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+    .message.user { align-self: flex-end; flex-direction: row-reverse; }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .ai .avatar { background: var(--primary); color: white; }
+    .user .avatar { background: #374151; color: white; }
+
+    .bubble {
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+
+    .ai .bubble { background: var(--ai-bubble); border: 1px solid #e5e7eb; color: var(--text-dark); }
+    .user .bubble { background: var(--user-bubble); color: var(--primary); font-weight: 500; }
+
+    /* --- Input Area --- */
+    .input-area {
+      background: var(--white);
+      padding: 1.5rem;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .input-container {
+      max-width: 800px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    #typing-indicator {
+      position: absolute;
+      top: -25px;
+      left: 5px;
+      font-size: 0.75rem;
+      color: var(--text-light);
+      display: none;
+    }
+
+    .input-box {
+      display: flex;
+      gap: 10px;
+      background: #fff;
+      border: 2px solid #e5e7eb;
+      padding: 8px 12px;
+      border-radius: 14px;
+      transition: border-color 0.2s;
+    }
+
+    .input-box:focus-within { border-color: var(--primary); }
+
+    input#user-input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 1rem;
+      padding: 8px;
+    }
+
+    button#send-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 0 18px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button#send-btn:hover { background: var(--primary-hover); }
+    button#send-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+
+    .footer-text {
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--text-light);
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-content">
+    <div class="logo-row">
+      <div class="logo">
+        <i data-lucide="graduation-cap"></i>
+        <span>Handbook AI Assistant</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main id="chat-window">
+  <div class="message ai">
+    <div class="avatar"><i data-lucide="bot"></i></div>
+    <div class="bubble">Welcome. I have indexed the school handbook. How can I help you with school policies today?</div>
+  </div>
+</main>
+
+<div class="input-area">
+  <div class="input-container">
+    <div id="typing-indicator">AI is thinking...</div>
+    <div class="input-box">
+      <input type="text" id="user-input" placeholder="Ask about dress code, grading, or absences...">
+      <button id="send-btn" onclick="sendMessage()">
+        <i data-lucide="send"></i>
+      </button>
+    </div>
+    <p class="footer-text">PSHS School Handbook System • github.com/nathanarreza</p>
+  </div>
+</div>
+
+<script>
+  // Initialize Icons
+  lucide.createIcons();
+
+  const chatWindow = document.getElementById('chat-window');
+  const apiUrlInput = 'https://pshscbzrc-school-handbook-chat.loca.lt/'
+  const userInput = document.getElementById('user-input');
+  const sendBtn = document.getElementById('send-btn');
+  const typingIndicator = document.getElementById('typing-indicator');
+  const verifyLink = document.getElementById('verify-link');
+
+  // Auto-load saved URL from browser memory
+  apiUrlInput.value = localStorage.getItem('last-rag-url') || '';
+  updateVerifyLink();
+
+  apiUrlInput.addEventListener('input', () => {
+    localStorage.setItem('last-rag-url', apiUrlInput.value);
+    updateVerifyLink();
+  });
+
+  function updateVerifyLink() {
+    verifyLink.href = apiUrlInput.value || '#';
+  }
+
+  async function sendMessage() {
+    const baseUrl = apiUrlInput.value.trim().replace(/\/$/, "");
+    const question = userInput.value.trim();
+
+    if (!baseUrl) return;
+    appendMessage('user', question);
+    userInput.value = '';
+    setLoading(true);
+
+    try {
+      // GET Request with NO custom headers
+      const response = await fetch(`${baseUrl}/ask?question=${encodeURIComponent(question)}`, {
+        method: 'GET'
+      });
+
+      const data = await response.json();
+      appendMessage('ai', data.answer);
+    } catch (error) {
+      appendMessage('ai', "**Connection Error.** \n\nCheck Colab for 'SERVER ERROR'.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function appendMessage(role, text) {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `message ${role}`;
+    const icon = role === 'ai' ? 'bot' : 'user';
+
+    // Convert newlines to <br> for better formatting
+    const formattedText = text.replace(/\n/g, '<br>');
+
+    msgDiv.innerHTML = `
+            <div class="avatar"><i data-lucide="${icon}"></i></div>
+            <div class="bubble">${formattedText}</div>
+        `;
+
+    chatWindow.appendChild(msgDiv);
+    lucide.createIcons();
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+
+  function setLoading(isLoading) {
+    sendBtn.disabled = isLoading;
+    userInput.disabled = isLoading;
+    typingIndicator.style.display = isLoading ? 'block' : 'none';
+  }
+
+  // Handle Enter Key
+  userInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") sendMessage();
+  });
+</script>
+
+</body>
+</html>
