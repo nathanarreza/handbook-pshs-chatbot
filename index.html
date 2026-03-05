@@ -8,8 +8,8 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     :root {
-      --primary: #4f46e5;
-      --primary-hover: #4338ca;
+      --primary: #414a4c;
+      --primary-hover: #3b444b;
       --bg-gray: #f9fafb;
       --white: #ffffff;
       --text-dark: #111827;
@@ -57,8 +57,6 @@
       color: var(--text-dark);
     }
 
-
-    /* --- Chat Window --- */
     #chat-window {
       flex: 1;
       overflow-y: auto;
@@ -107,7 +105,6 @@
     .ai .bubble { background: var(--ai-bubble); border: 1px solid #e5e7eb; color: var(--text-dark); }
     .user .bubble { background: var(--user-bubble); color: var(--primary); font-weight: 500; }
 
-    /* --- Input Area --- */
     .input-area {
       background: var(--white);
       padding: 1.5rem;
@@ -176,8 +173,8 @@
   <div class="header-content">
     <div class="logo-row">
       <div class="logo">
-        <i data-lucide="graduation-cap"></i>
-        <span>Handbook AI Assistant</span>
+        <img src="logo.svg" width = "128" alt="Logo">
+        <span>GABAY</span>
       </div>
     </div>
   </div>
@@ -185,8 +182,8 @@
 
 <main id="chat-window">
   <div class="message ai">
-    <div class="avatar"><i data-lucide="bot"></i></div>
-    <div class="bubble">Welcome. I have indexed the school handbook. How can I help you with school policies today?</div>
+    <div class="avatar"><i data-lucide="book"></i></div>
+    <div class="bubble">Welcome.  How can I help you with school policies today?</div>
   </div>
 </main>
 
@@ -194,7 +191,7 @@
   <div class="input-container">
     <div id="typing-indicator">AI is thinking...</div>
     <div class="input-box">
-      <input type="text" id="user-input" placeholder="Ask about dress code, grading, or absences...">
+      <input type="text" id="user-input" placeholder="Ask about dress code, absences, infractions...">
       <button id="send-btn" onclick="sendMessage()">
         <i data-lucide="send"></i>
       </button>
