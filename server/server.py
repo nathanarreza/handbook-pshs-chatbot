@@ -1,112 +1,59 @@
-
-!apt-get install -y zstd
-
-!apt-get update && apt-get install -y pciutils zstd
-!curl -fsSL https://ollama.com/install.sh | sh
-!pip install llama-index-llms-ollama llama-index-embeddings-ollama llama-index fastapi uvicorn nest-asyncio pyngrok python-multipart
-
-!apt-get install -y zstd
-
-!curl -fsSL https://ollama.com/install.sh | sh
-
-import subprocess
-import time
 import os
-
-!pkill ollama
-
-# Start the server and send logs to a file
-with open("ollama_logs.txt", "w") as f:
-    subprocess.Popen(["ollama", "serve"], stdout=f, stderr=f)
-
-time.sleep(10)
-
-print("Downloading Llama 3.2 (1B)...")
-!ollama pull llama3.2:1b
-print("Downloading Embedding Model...")
-!ollama pull nomic-embed-text
-
-os.environ['OLLAMA_HOST'] = '0.0.0.0:11434'
-subprocess.Popen(["ollama", "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-time.sleep(5)
-
-!ollama pull llama3.2:1b
-!ollama pull all-minilm
-
-import os
-import nest_asyncio
-from fastapi import FastAPI, Query, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings, StorageContext, load_index_from_storage, PromptTemplate
 from llama_index.llms.ollama import Ollama
 from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.core.node_parser import SentenceSplitter
-import uvicorn
-import threading
 
-nest_asyncio.apply()
-app = FastAPI()
+app = Flask(__name__)
+CORS(app)  # Allows your frontend to connect to this backend
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["*"],
-)
+# --- CONFIGURATION ---
+PERSIST_DIR = "./storage"
+PDF_FILES = ["pshs-handbook.pdf", "coc-handbook.pdf"]
 
-
-Settings.chunk_size = 256
-Settings.chunk_overlap = 50
-
+# Initialize Models
 Settings.llm = Ollama(
     model="llama3.2:1b",
-    request_timeout=60.0,
+    request_timeout=120.0,
     base_url="http://localhost:11434",
     temperature=0.1,
-    additional_kwargs={
-        "num_predict": 300
-    }
 )
 
 Settings.embed_model = OllamaEmbedding(
     model_name="nomic-embed-text",
     base_url="http://localhost:11434",
-    embed_batch_size=10
 )
 
+Settings.chunk_size = 256
+Settings.chunk_overlap = 50
+
+# Global variable for the query engine
 query_engine = None
-PERSIST_DIR = "./storage"
 
 def initialize_index():
     global query_engine
 
-    pdf_files =["pshs-handbook.pdf", "coc-handbook.pdf"]
-
-    for pdf in pdf_files:
+    # Check if PDFs exist
+    for pdf in PDF_FILES:
         if not os.path.exists(pdf):
-            print(f"Missing file: {pdf}. Please upload it to your workspace.")
+            print(f"CRITICAL: {pdf} not found in the current directory.")
             return
 
     try:
         if not os.path.exists(PERSIST_DIR):
-            print(f"Creating new index from {len(pdf_files)} files... (This may take a moment)")
-
-            documents = SimpleDirectoryReader(input_files=pdf_files).load_data()
-
-
+            print("Creating new index from documents...")
+            documents = SimpleDirectoryReader(input_files=PDF_FILES).load_data()
             splitter = SentenceSplitter(chunk_size=256, chunk_overlap=50)
-
-            index = VectorStoreIndex.from_documents(
-                documents,
-                transformations=[splitter]
-            )
+            index = VectorStoreIndex.from_documents(documents, transformations=[splitter])
             index.storage_context.persist(persist_dir=PERSIST_DIR)
         else:
-            print("Loading existing index from storage... (Lightning fast!)")
+            print("Loading existing index from storage...")
             storage_context = StorageContext.from_defaults(persist_dir=PERSIST_DIR)
             index = load_index_from_storage(storage_context)
 
+        # Custom Prompt
         qa_prompt_tmpl_str = (
             "You are a helpful and friendly school assistant. You are answering questions based on excerpts from the official school documents below.\n"
             "---------------------\n"
@@ -125,36 +72,32 @@ def initialize_index():
             similarity_top_k=4,
             text_qa_template=qa_prompt_tmpl
         )
-        print("Handbook and additional documents ready!")
+        print("Index ready!")
 
     except Exception as e:
-        print(f"Error index: {e}")
+        print(f"Error during index initialization: {e}")
 
+# Run initialization before the first request
 initialize_index()
 
-@app.get("/ask")
-async def ask(question: str = Query(...)):
-    global query_engine
+@app.route('/ask', methods=['GET'])
+def ask():
+    question = request.args.get('question')
+    if not question:
+        return jsonify({"error": "No question provided"}), 400
+
     if query_engine is None:
-        return {"answer": "Server not ready."}
+        return jsonify({"answer": "Server is still initializing. Please try again in a moment."}), 503
+
     try:
-        print(f"Question received: {question}")
-        response = await query_engine.aquery(question)
-
-        print(f"Answered successfully.")
-        return {"answer": str(response)}
+        print(f"Processing question: {question}")
+        # Note: We use .query() (sync) instead of .aquery() (async) for standard Flask
+        response = query_engine.query(question)
+        return jsonify({"answer": str(response)})
     except Exception as e:
-        print(f"Server error: {str(e)}")
-        return {"answer": f"Backend Error: {str(e)}"}
+        print(f"Error: {e}")
+        return jsonify({"answer": f"Internal Server Error: {str(e)}"}), 500
 
-def run():
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-
-
-threading.Thread(target=run, daemon=True).start()
-
-!npm install -g localtunnel
-
-!npx lt --port 8000 --subdomain pshscbzrc-school-handbook-chat
-
-!fuser -k 8000/tcp
+if __name__ == '__main__':
+    # Run the Flask app on localhost:8000
+    app.run(host='0.0.0.0', port=8000, debug=False)
